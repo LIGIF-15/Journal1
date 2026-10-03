@@ -1,0 +1,7 @@
+{
+  "name": "Komorebi — Digital Diary & Mindful Journal",
+  "description": "An intimate digital diary entry experience featuring mindful prompts, emotion tags, rich writing tools, and calm reflection layouts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
