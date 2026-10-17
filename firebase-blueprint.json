@@ -1,0 +1,142 @@
+{
+  "entities": {
+    "DiaryEntry": {
+      "title": "DiaryEntry",
+      "description": "A private digital diary journal entry created by the authenticated owner.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of the author owning this entry."
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Title of the diary entry."
+        },
+        "content": {
+          "type": "string",
+          "maxLength": 50000,
+          "description": "The written prose content of the diary entry."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO timestamp for when the entry occurred."
+        },
+        "displayDate": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Formatted human-readable date."
+        },
+        "location": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Optional location note."
+        },
+        "weather": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Optional weather or atmospheric note."
+        },
+        "mood": {
+          "type": "string",
+          "enum": ["peaceful", "radiant", "reflective", "tender", "energized", "solitude"],
+          "description": "Emotional state tag."
+        },
+        "tags": {
+          "type": "array",
+          "description": "User created topic tags."
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "URL or storage path of attached memory photo."
+        },
+        "isFavorite": {
+          "type": "boolean",
+          "description": "Whether the entry is favorited."
+        },
+        "wordCount": {
+          "type": "integer",
+          "description": "Number of words in the entry."
+        },
+        "readingMinutes": {
+          "type": "integer",
+          "description": "Estimated reading time in minutes."
+        },
+        "reflection": {
+          "type": "string",
+          "maxLength": 2000,
+          "description": "Attuned two-line responsive reflection from Gemini."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when last modified."
+        }
+      },
+      "required": ["userId", "title", "content", "date", "mood", "updatedAt"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private profile of the authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authentication UID."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address."
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Display name of the journal owner."
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "User avatar URL."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account creation time."
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last sign in timestamp."
+        }
+      },
+      "required": ["userId", "email"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/entries/{entryId}": {
+      "schema": {
+        "$ref": "DiaryEntry"
+      },
+      "description": "Private entries written by the user. Only the authenticated user can read or write their own entries."
+    },
+    "/users/{userId}/profile/info": {
+      "schema": {
+        "$ref": "UserProfile"
+      },
+      "description": "Private profile information for the authenticated user."
+    }
+  }
+}

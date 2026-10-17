@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Public healthcheck/connection test document
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // User Private Namespace: Strictly isolated by user authentication UID
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // User Profile Info
+      match /profile/{document=**} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // User Diary Entries: Only the authenticated owner can read, write, or delete
+      match /entries/{entryId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

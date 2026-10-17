@@ -22,6 +22,8 @@ export interface DiaryEntry {
   isFavorite?: boolean;
   wordCount: number;
   readingMinutes: number;
+  reflection?: string; // Two-line personal responsive echo from Gemini
+  userId?: string;
   updatedAt: string;
 }
 

@@ -1,7 +1,8 @@
-import React from 'react';
-import { X, Calendar, MapPin, CloudSun, Heart, Edit3, Trash2, Clock, Share2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Calendar, MapPin, CloudSun, Heart, Edit3, Trash2, Clock, Sparkles, Feather, RefreshCw } from 'lucide-react';
 import { DiaryEntry } from '../types/diary';
 import { MOODS } from '../data/seedEntries';
+import { generateEntryReflection } from '../utils/geminiReflection';
 
 interface EntryDetailModalProps {
   entry: DiaryEntry | null;
@@ -9,6 +10,7 @@ interface EntryDetailModalProps {
   onEdit: (entry: DiaryEntry) => void;
   onDelete: (id: string) => void;
   onToggleFavorite: (id: string) => void;
+  onUpdateEntryReflection?: (id: string, reflection: string) => void;
 }
 
 export const EntryDetailModal: React.FC<EntryDetailModalProps> = ({
@@ -17,10 +19,39 @@ export const EntryDetailModal: React.FC<EntryDetailModalProps> = ({
   onEdit,
   onDelete,
   onToggleFavorite,
+  onUpdateEntryReflection,
 }) => {
   if (!entry) return null;
 
   const moodMeta = MOODS.find((m) => m.id === entry.mood);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [currentReflection, setCurrentReflection] = useState<string | undefined>(entry.reflection);
+
+  // Sync state if entry changes
+  React.useEffect(() => {
+    setCurrentReflection(entry.reflection);
+  }, [entry]);
+
+  const handleGenerateReflection = async () => {
+    setIsGenerating(true);
+    const newReflection = await generateEntryReflection({
+      title: entry.title,
+      content: entry.content,
+      mood: entry.mood,
+      date: entry.date,
+      location: entry.location,
+      weather: entry.weather,
+      tags: entry.tags,
+    });
+    setIsGenerating(false);
+
+    if (newReflection) {
+      setCurrentReflection(newReflection);
+      if (onUpdateEntryReflection) {
+        onUpdateEntryReflection(entry.id, newReflection);
+      }
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
@@ -131,9 +162,62 @@ export const EntryDetailModal: React.FC<EntryDetailModalProps> = ({
             {entry.content}
           </div>
 
+          {/* Two-Line Gemini Personal Reflection Section */}
+          <div className="pt-4 border-t border-stone-100">
+            {currentReflection ? (
+              <div className="p-4 sm:p-5 rounded-xl bg-amber-50/60 border border-amber-200/70 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-900">
+                    <Feather className="w-3.5 h-3.5 text-amber-700" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-amber-900">
+                      Attuned Reflection
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={handleGenerateReflection}
+                    disabled={isGenerating}
+                    className="text-xs text-amber-800 hover:text-amber-950 flex items-center gap-1 font-medium transition-colors"
+                    title="Generate a fresh attuned echo"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
+                    <span>{isGenerating ? 'Reflecting...' : 'Re-reflect'}</span>
+                  </button>
+                </div>
+
+                <div className="space-y-1.5 font-serif-diary text-stone-900 text-sm sm:text-base leading-relaxed pl-1 border-l-2 border-amber-400">
+                  {currentReflection
+                    .split('\n')
+                    .map((l) => l.trim())
+                    .filter(Boolean)
+                    .map((line, idx) => (
+                      <p key={idx} className="italic font-medium">
+                        "{line.replace(/^["“”]/, '').replace(/["“”]$/, '')}"
+                      </p>
+                    ))}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-stone-50 border border-stone-200/70 text-xs">
+                <div className="flex items-center gap-2 text-stone-600">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>No reflection recorded yet for this entry.</span>
+                </div>
+                <button
+                  onClick={handleGenerateReflection}
+                  disabled={isGenerating}
+                  className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isGenerating ? 'animate-spin' : ''}`} />
+                  <span>{isGenerating ? 'Listening...' : 'Generate 2-Line Echo'}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Tags */}
           {entry.tags.length > 0 && (
-            <div className="pt-6 border-t border-stone-100 flex flex-wrap items-center gap-2">
+            <div className="pt-2 flex flex-wrap items-center gap-2">
               <span className="text-xs text-stone-400">Filed under:</span>
               {entry.tags.map((t) => (
                 <span
@@ -150,3 +234,4 @@ export const EntryDetailModal: React.FC<EntryDetailModalProps> = ({
     </div>
   );
 };
+

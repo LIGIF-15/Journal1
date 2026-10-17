@@ -63,6 +63,7 @@ Work was surprisingly smooth. When deadlines get tense, having had that initial 
     isFavorite: true,
     wordCount: 147,
     readingMinutes: 1,
+    reflection: `The scent of crushed ginger root anchored your morning before the rush could steal it.\nMay you carry that quiet stone garden with you into whatever turbulence tomorrow holds.`,
     updatedAt: '2026-10-02T08:30:00.000Z',
   },
   {
@@ -83,6 +84,7 @@ Came back with chilled fingers and a clear head. Wrote two pages in my notebook 
     isFavorite: false,
     wordCount: 112,
     readingMinutes: 1,
+    reflection: `You found true companionship in simple words about fallen chestnuts by the iron bridge.\nHow remarkable that cold autumn air can leave the heart feeling so thoroughly warmed.`,
     updatedAt: '2026-09-29T19:15:00.000Z',
   },
 ];

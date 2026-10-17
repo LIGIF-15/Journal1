@@ -21,9 +21,12 @@ import {
   Send,
   Trash2,
   Smile,
+  RefreshCw,
+  Feather,
 } from 'lucide-react';
 import { DiaryEntry, MoodType, WritingPrompt } from '../types/diary';
 import { MOODS, INITIAL_PROMPTS } from '../data/seedEntries';
+import { generateEntryReflection } from '../utils/geminiReflection';
 
 interface DiaryEntryFormProps {
   onSaveEntry: (entry: Omit<DiaryEntry, 'id' | 'updatedAt'>) => void;
@@ -50,6 +53,8 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
   const [currentPromptIndex, setCurrentPromptIndex] = useState(0);
   const [isPrivate, setIsPrivate] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [reflection, setReflection] = useState<string | undefined>(editingEntry?.reflection);
+  const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
 
   // Date & Time states
   const [entryDate, setEntryDate] = useState(() => {
@@ -74,6 +79,7 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
       setMood(editingEntry.mood);
       setTags(editingEntry.tags);
       setPhotoUrl(editingEntry.photoUrl);
+      setReflection(editingEntry.reflection);
       const d = new Date(editingEntry.date);
       setEntryDate(d.toISOString().split('T')[0]);
       setEntryTime(d.toTimeString().slice(0, 5));
@@ -152,7 +158,31 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
     setTags(tags.filter((t) => t !== tagToRemove));
   };
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  // Generate Gemini two-line reflection on demand
+  const handleGenerateReflection = async () => {
+    if (!content.trim() && !title.trim()) {
+      alert('Write a few thoughts first so Gemini has your authentic words to reflect upon.');
+      return;
+    }
+
+    setIsGeneratingReflection(true);
+    const generated = await generateEntryReflection({
+      title: title.trim(),
+      content: content.trim(),
+      mood,
+      date: `${entryDate} ${entryTime}`,
+      location,
+      weather,
+      tags,
+    });
+    setIsGeneratingReflection(false);
+
+    if (generated) {
+      setReflection(generated);
+    }
+  };
+
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
     if (!content.trim() && !title.trim()) {
@@ -162,7 +192,9 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
 
     setSaveStatus('saving');
 
-    const finalTitle = title.trim() || `Journal Note · ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    const finalTitle =
+      title.trim() ||
+      `Journal Note · ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     const fullIsoDate = new Date(`${entryDate}T${entryTime}:00`).toISOString();
 
     const displayDateFormatted = new Date(fullIsoDate).toLocaleDateString('en-US', {
@@ -171,6 +203,28 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
       month: 'long',
       day: 'numeric',
     });
+
+    // If reflection not yet generated, attempt generation with Gemini API
+    let finalReflection = reflection;
+    if (!finalReflection && (content.trim().length > 10 || title.trim().length > 5)) {
+      try {
+        const generated = await generateEntryReflection({
+          title: finalTitle,
+          content,
+          mood,
+          date: fullIsoDate,
+          location,
+          weather,
+          tags,
+        });
+        if (generated) {
+          finalReflection = generated;
+          setReflection(generated);
+        }
+      } catch (err) {
+        console.warn('Could not auto-generate reflection on submit:', err);
+      }
+    }
 
     onSaveEntry({
       title: finalTitle,
@@ -185,6 +239,7 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
       isFavorite: editingEntry?.isFavorite || false,
       wordCount,
       readingMinutes: readingTime,
+      reflection: finalReflection,
     });
 
     setSaveStatus('saved');
@@ -197,8 +252,9 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
         setContent('');
         setTags(['Reflection']);
         setPhotoUrl(undefined);
+        setReflection(undefined);
       }
-    }, 1200);
+    }, 1500);
   };
 
   const presetPhotos = [
@@ -621,6 +677,80 @@ export const DiaryEntryForm: React.FC<DiaryEntryFormProps> = ({
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Gemini Two-Line Personal Responsive Reflection Area */}
+        <div className="pt-4 border-t border-stone-100">
+          {reflection ? (
+            <div className="p-4 sm:p-5 rounded-xl bg-amber-50/50 border border-amber-200/60 transition-all space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-900">
+                  <Feather className="w-3.5 h-3.5 text-amber-700" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-amber-900">
+                    A Quiet Echo of Your Entry
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGenerateReflection}
+                    disabled={isGeneratingReflection}
+                    className="text-xs text-amber-800 hover:text-amber-950 flex items-center gap-1 font-medium transition-colors"
+                    title="Generate a fresh, attuned reflection"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isGeneratingReflection ? 'animate-spin' : ''}`} />
+                    <span>{isGeneratingReflection ? 'Listening...' : 'Reflect again'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setReflection(undefined)}
+                    className="text-stone-400 hover:text-stone-600 p-0.5"
+                    title="Dismiss echo"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {isGeneratingReflection ? (
+                <div className="py-2 text-xs text-amber-800/80 italic font-serif-diary flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-amber-600 animate-ping" />
+                  <span>Attuning to your words...</span>
+                </div>
+              ) : (
+                <div className="space-y-1.5 font-serif-diary text-stone-800 text-sm sm:text-base leading-relaxed pl-1 border-l-2 border-amber-300">
+                  {reflection
+                    .split('\n')
+                    .map((line) => line.trim())
+                    .filter(Boolean)
+                    .map((line, idx) => (
+                      <p key={idx} className="italic text-stone-900 font-medium">
+                        "{line.replace(/^["“”]/, '').replace(/["“”]$/, '')}"
+                      </p>
+                    ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between py-1">
+              <div className="flex items-center gap-1.5 text-xs text-stone-400">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Gemini crafts an attuned 2-line reflection when you submit.</span>
+              </div>
+              {(content.trim().length > 10 || title.trim().length > 5) && (
+                <button
+                  type="button"
+                  onClick={handleGenerateReflection}
+                  disabled={isGeneratingReflection}
+                  className="text-xs text-stone-600 hover:text-stone-900 font-medium flex items-center gap-1 underline underline-offset-2 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isGeneratingReflection ? 'animate-spin' : ''}`} />
+                  <span>{isGeneratingReflection ? 'Reflecting...' : 'Preview reflection now'}</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
